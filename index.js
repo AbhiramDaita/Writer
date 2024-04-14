@@ -47,9 +47,12 @@ app.post("/postWriting",verifyJWT, (req,res)=>{
     const currentDate = new Date();
     const writing = 
         {
+            "title":req.body.title,
             "writing":req.body.writing,
             "date" : currentDate.getDate() + "-" + currentDate.getMonth()+1 + "-" + currentDate.getFullYear(),
             "time":currentDate.getHours() + ":" + currentDate.getMinutes(),
+            "userName":req.user.userName,
+            "genre":req.body.genre,
         } 
 
     const filter = {userName:req.user.userName};
@@ -91,7 +94,7 @@ app.post("/register",async (req,res)=>{
 
 
     
-    const existingUser = await col.findOne({name:user.name});
+    const existingUser = await col.findOne({userName:user.userName});
     if(existingUser){
         res.send("User already exists.");
     } else{
@@ -208,7 +211,7 @@ app.get("/quote",async (req,res)=>{
 // Set Interests
 app.post("/interests",verifyJWT,async(req,res)=>{
     const col = db.collection("users");
-    const doc = await  col.updateOne({userName:req.user.userName},{
+    const doc = await col.updateOne({userName:req.user.userName},{
         $set:{
             interests:req.body.interests,
         }
@@ -216,8 +219,47 @@ app.post("/interests",verifyJWT,async(req,res)=>{
     res.status(400).send("Done");
 });
 
+// Get a single post
+app.get("/singlePost",async (req,res)=>{
+    const col = db.collection("write");
+    const doc = await col.findOne({title:req.body.title});
+    if(!doc){
+        res.status(400).send("Can't find writing");
+    }
+    res.status(200).send(doc);
+});
 
+// Search Functionality
+app.get("/search",async(req,res)=>{
+    const col = db.collection("write");
 
+    const searchTerm = req.body.searchTerm;
+
+    const pipeline = [
+    {
+        $match: {
+        'writings.title': { $regex: new RegExp(searchTerm, 'i') },
+        },
+    },
+    {
+        $unwind: '$writings', 
+    },
+    {
+        $match: {
+        'writings.title': { $regex: new RegExp(searchTerm, 'i') },
+        },
+    },
+
+    {
+        $group: {
+        _id: null,
+        matchedObjects: { $addToSet: '$writings' }, 
+        },
+    },
+    ];
+    const results = await col.aggregate(pipeline).toArray();
+    res.status(200).send(results);
+});
 
 app.listen(3000);
 
