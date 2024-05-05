@@ -75,7 +75,7 @@ app.post("/register",async (req,res)=>{
 
     const user = {
         userName:req.body.userName,
-        quote:req.body.quote,
+        about:req.body.about,
         email:req.body.email,
         password:req.body.password,
         profileImg:""
